@@ -7,13 +7,14 @@ import (
 	"io"
 	"os"
 	"sort"
+
+	"github.com/spf13/pflag"
 )
 
 var ErrFileNotExist = errors.New("file does not exist")
 
-func sortStrings(ss []string) []string {
-	sort.Strings(ss)
-	return ss
+func sortStrings(s *sorter) {
+	sort.Sort(s)
 }
 
 func scan(r io.Reader) ([]string, error) {
@@ -51,6 +52,12 @@ func readFromFile(filename string) ([]string, error) {
 }
 
 func main() {
+	column := pflag.IntP("column", "k", 0, "sort by column N")
+	number := pflag.BoolP("number", "n", false, "sort by numbers")
+	reverse := pflag.BoolP("reverse", "r", false, "reverse")
+
+	pflag.Parse()
+
 	var text []string
 	var err error
 
@@ -72,8 +79,15 @@ func main() {
 		}
 	}
 
-	sorted := sortStrings(text)
-	for _, s := range sorted {
+	s := &sorter{
+		lines:   text,
+		column:  *column,
+		number:  *number,
+		reverse: *reverse,
+	}
+
+	sortStrings(s)
+	for _, s := range text {
 		fmt.Println(s)
 	}
 }
