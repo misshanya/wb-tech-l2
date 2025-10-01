@@ -51,10 +51,23 @@ func readFromFile(filename string) ([]string, error) {
 	return scan(file)
 }
 
+func makeUnique(text []string) []string {
+	var result []string
+	uniqueMap := make(map[string]struct{})
+	for _, line := range text {
+		if _, ok := uniqueMap[line]; !ok {
+			uniqueMap[line] = struct{}{}
+			result = append(result, line)
+		}
+	}
+	return result
+}
+
 func main() {
 	column := pflag.IntP("column", "k", 0, "sort by column N")
 	number := pflag.BoolP("number", "n", false, "sort by numbers")
 	reverse := pflag.BoolP("reverse", "r", false, "reverse")
+	unique := pflag.BoolP("unique", "u", false, "unique")
 
 	pflag.Parse()
 
@@ -77,6 +90,10 @@ func main() {
 			fmt.Printf("failed to read from file: %s\n", err)
 			os.Exit(1)
 		}
+	}
+
+	if *unique {
+		text = makeUnique(text)
 	}
 
 	s := &sorter{
