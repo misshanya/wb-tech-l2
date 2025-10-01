@@ -5,6 +5,7 @@ import (
 	"strings"
 )
 
+// sorter is a custom type for complex sort operations
 type sorter struct {
 	lines   []string
 	column  int
@@ -20,6 +21,7 @@ func (s *sorter) Swap(i, j int) {
 	s.lines[i], s.lines[j] = s.lines[j], s.lines[i]
 }
 
+// Less performs checks and returns if one is less than other based on custom rules
 func (s *sorter) Less(i, j int) bool {
 	first := s.lines[i]
 	second := s.lines[j]

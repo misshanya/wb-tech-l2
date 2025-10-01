@@ -13,10 +13,12 @@ import (
 
 var ErrFileNotExist = errors.New("file does not exist")
 
+// sortStrings performs sort of custom sorter
 func sortStrings(s *sorter) {
 	sort.Sort(s)
 }
 
+// scan performs read from reader by line
 func scan(r io.Reader) ([]string, error) {
 	var result []string
 
@@ -34,10 +36,12 @@ func scan(r io.Reader) ([]string, error) {
 	return result, nil
 }
 
+// readFromStdin performs read from standard input
 func readFromStdin() ([]string, error) {
 	return scan(os.Stdin)
 }
 
+// readFromFile performs a read of file content with specified filename
 func readFromFile(filename string) ([]string, error) {
 	file, err := os.Open(filename)
 	if err != nil {
@@ -51,6 +55,7 @@ func readFromFile(filename string) ([]string, error) {
 	return scan(file)
 }
 
+// makeUnique returns a slice of unique strings of an input slice
 func makeUnique(text []string) []string {
 	var result []string
 	uniqueMap := make(map[string]struct{})
