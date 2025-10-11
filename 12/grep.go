@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -10,7 +11,6 @@ import (
 type params struct {
 	ContextAfterSize  int
 	ContextBeforeSize int
-	ContextAllSize    int
 	OnlyAmountOfLines bool
 	IgnoreCase        bool
 	InvertFilter      bool
@@ -20,29 +20,50 @@ type params struct {
 
 func grep(input []string, pattern string, p *params) ([]string, error) {
 	var result []string
+	linesToPrint := make(map[int]struct{})
 
-	for i, s := range input {
-		matchResult, err := isMatch(s, pattern, p)
+	for i, line := range input {
+		matchResult, err := isMatch(line, pattern, p)
 		if err != nil {
 			return []string{}, err
 		}
+
 		if p.InvertFilter {
 			matchResult = !matchResult
 		}
 
-		ss := s
-
-		if p.NumbersOfLines {
-			ss = fmt.Sprintf("%v: %s", i+1, ss)
-		}
-
 		if matchResult {
-			result = append(result, ss)
+			linesToPrint[i] = struct{}{}
+
+			for j := 1; j <= p.ContextBeforeSize && i-j >= 0; j++ {
+				linesToPrint[i-j] = struct{}{}
+			}
+
+			for j := 1; j <= p.ContextAfterSize && i+j < len(input); j++ {
+				linesToPrint[i+j] = struct{}{}
+			}
 		}
 	}
 
+	fmt.Println(linesToPrint)
+
 	if p.OnlyAmountOfLines {
-		return []string{strconv.Itoa(len(result))}, nil
+		return []string{strconv.Itoa(len(linesToPrint))}, nil
+	}
+
+	sortedIndexes := make([]int, 0, len(linesToPrint))
+
+	for i := range linesToPrint {
+		sortedIndexes = append(sortedIndexes, i)
+	}
+	sort.Ints(sortedIndexes)
+
+	for _, i := range sortedIndexes {
+		line := input[i]
+		if p.NumbersOfLines {
+			line = fmt.Sprintf("%v: %s", i+1, line)
+		}
+		result = append(result, line)
 	}
 
 	return result, nil

@@ -108,7 +108,6 @@ func main() {
 	p := &params{
 		ContextAfterSize:  *contextAfterSize,
 		ContextBeforeSize: *contextBeforeSize,
-		ContextAllSize:    *contextAllSize,
 		OnlyAmountOfLines: *onlyAmountOfLines,
 		IgnoreCase:        *ignoreCase,
 		InvertFilter:      *invertFilter,
