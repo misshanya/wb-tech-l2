@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
@@ -20,7 +21,7 @@ type params struct {
 func grep(input []string, pattern string, p *params) ([]string, error) {
 	var result []string
 
-	for _, s := range input {
+	for i, s := range input {
 		matchResult, err := isMatch(s, pattern, p)
 		if err != nil {
 			return []string{}, err
@@ -29,8 +30,14 @@ func grep(input []string, pattern string, p *params) ([]string, error) {
 			matchResult = !matchResult
 		}
 
+		ss := s
+
+		if p.NumbersOfLines {
+			ss = fmt.Sprintf("%v: %s", i+1, ss)
+		}
+
 		if matchResult {
-			result = append(result, s)
+			result = append(result, ss)
 		}
 	}
 
