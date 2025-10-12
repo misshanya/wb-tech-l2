@@ -50,19 +50,6 @@ func readFromFile(filename string) ([]string, error) {
 	return scan(file)
 }
 
-// makeUnique returns a slice of unique strings of an input slice
-func makeUnique(text []string) []string {
-	var result []string
-	uniqueMap := make(map[string]struct{})
-	for _, line := range text {
-		if _, ok := uniqueMap[line]; !ok {
-			uniqueMap[line] = struct{}{}
-			result = append(result, line)
-		}
-	}
-	return result
-}
-
 func main() {
 	contextAfterSize := pflag.IntP("context-after", "A", 0, "print N lines after each line")
 	contextBeforeSize := pflag.IntP("context-before", "B", 0, "print N lines before each line")
