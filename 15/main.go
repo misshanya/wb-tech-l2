@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"strings"
 )
 
@@ -71,7 +72,16 @@ func main() {
 			os.Exit(0)
 
 		default:
-			fmt.Println("Unknown command")
+			cmd := exec.Command(parts[0], parts[1:]...)
+
+			cmd.Stdin = os.Stdin
+			cmd.Stdout = os.Stdout
+
+			err := cmd.Run()
+			if err != nil {
+				fmt.Println("failed to execute external command:", err)
+				continue
+			}
 		}
 	}
 }
