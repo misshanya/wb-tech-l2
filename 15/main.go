@@ -99,6 +99,29 @@ func main() {
 				fmt.Printf("%-8d %-20s\n", pid, program)
 			}
 
+		case "kill":
+			if len(parts) < 2 {
+				fmt.Println("usage: kill {pid}")
+				continue
+			}
+
+			pid, err := strconv.Atoi(parts[1])
+			if err != nil {
+				fmt.Println("invalid pid")
+				continue
+			}
+
+			process, err := os.FindProcess(pid)
+			if err != nil {
+				fmt.Println("failed to find process:", err)
+				continue
+			}
+
+			if err := process.Kill(); err != nil {
+				fmt.Println("failed to kill process")
+				continue
+			}
+
 		case "exit":
 			os.Exit(0)
 
