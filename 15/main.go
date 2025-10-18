@@ -7,6 +7,8 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -66,6 +68,35 @@ func main() {
 		case "echo":
 			if len(parts) > 1 {
 				fmt.Println(strings.Join(parts[1:], " "))
+			}
+
+		case "ps":
+			fmt.Printf("%-8s %-20s\n", "PID", "PROGRAM")
+
+			entries, err := os.ReadDir("/proc")
+			if err != nil {
+				fmt.Println("failed to read /proc:", err)
+				continue
+			}
+
+			for _, entry := range entries {
+				if !entry.IsDir() {
+					continue
+				}
+
+				pid, err := strconv.Atoi(entry.Name())
+				if err != nil {
+					continue
+				}
+
+				comm, err := os.ReadFile(filepath.Join("/proc", entry.Name(), "comm"))
+				if err != nil {
+					fmt.Printf("failed to read comm of pid %v: %s", pid, err)
+					continue
+				}
+				program := strings.TrimSpace(string(comm))
+
+				fmt.Printf("%-8d %-20s\n", pid, program)
 			}
 
 		case "exit":
