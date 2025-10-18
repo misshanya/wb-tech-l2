@@ -7,7 +7,59 @@ import (
 	"io"
 	"os"
 	"strings"
+	"sync"
 )
+
+func processCommand(input string, in io.Reader, w io.Writer) error {
+	parts := strings.Fields(input)
+
+	if len(parts) < 1 {
+		return nil
+	}
+
+	switch parts[0] {
+
+	case "cd":
+		return cmdCd(parts)
+
+	case "pwd":
+		out, err := cmdPwd()
+		if err != nil {
+			return err
+		}
+		fmt.Fprintln(w, out)
+
+	case "echo":
+		out := cmdEcho(parts)
+		fmt.Fprintln(w, out)
+
+	case "ps":
+		out, err := cmdPs()
+		if err != nil {
+			return err
+		}
+		for _, line := range out {
+			fmt.Fprintln(w, line)
+		}
+
+	case "kill":
+		return cmdKill(parts)
+
+	case "exit":
+		os.Exit(0)
+
+	default:
+		out, err := cmdExternal(parts, in)
+		if err != nil {
+			return err
+		}
+		for _, line := range out {
+			fmt.Fprintln(w, line)
+		}
+	}
+
+	return nil
+}
 
 func main() {
 	reader := bufio.NewReader(os.Stdin)
@@ -28,62 +80,43 @@ func main() {
 
 		input = strings.TrimSpace(input)
 
-		parts := strings.Fields(input)
-
-		if len(parts) < 1 {
+		pipes := strings.Split(input, "|")
+		if len(pipes) <= 1 {
+			err := processCommand(input, os.Stdin, os.Stdout)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				continue
+			}
 			continue
 		}
 
-		switch parts[0] {
-
-		case "cd":
-			err := cmdCd(parts)
-			if err != nil {
-				fmt.Fprintln(os.Stderr, err)
+		var wg sync.WaitGroup
+		var inputReader io.Reader = os.Stdin
+		for i, cmd := range pipes {
+			if i == len(pipes)-1 {
+				err := processCommand(cmd, inputReader, os.Stdout)
+				if err != nil {
+					fmt.Fprintln(os.Stderr, err)
+				}
 				continue
 			}
 
-		case "pwd":
-			out, err := cmdPwd()
-			if err != nil {
-				fmt.Fprintln(os.Stderr, err)
-				continue
-			}
-			fmt.Println(out)
+			pipeReader, pipeWriter := io.Pipe()
 
-		case "echo":
-			out := cmdEcho(parts)
-			fmt.Println(out)
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				defer pipeWriter.Close()
 
-		case "ps":
-			out, err := cmdPs()
-			if err != nil {
-				fmt.Fprintln(os.Stderr, err)
-				continue
-			}
+				err := processCommand(cmd, inputReader, pipeWriter)
+				if err != nil {
+					fmt.Fprintln(os.Stderr, err)
+				}
+			}()
 
-			for _, line := range out {
-				fmt.Println(line)
-			}
-
-		case "kill":
-			err := cmdKill(parts)
-			if err != nil {
-				fmt.Fprintln(os.Stderr, err)
-			}
-
-		case "exit":
-			os.Exit(0)
-
-		default:
-			out, err := cmdExternal(parts)
-			if err != nil {
-				fmt.Fprintln(os.Stderr, err)
-				continue
-			}
-			for _, line := range out {
-				fmt.Println(line)
-			}
+			inputReader = pipeReader
 		}
+
+		wg.Wait()
 	}
 }

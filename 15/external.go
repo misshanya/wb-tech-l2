@@ -3,18 +3,19 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"strings"
 )
 
-func cmdExternal(args []string) ([]string, error) {
+func cmdExternal(args []string, in io.Reader) ([]string, error) {
 	cmd := exec.Command(args[0], args[1:]...)
 
 	var stdoutBuf bytes.Buffer
 	cmd.Stdout = &stdoutBuf
 
-	cmd.Stdin = os.Stdin
+	cmd.Stdin = in
 	cmd.Stderr = os.Stderr
 
 	err := cmd.Run()
