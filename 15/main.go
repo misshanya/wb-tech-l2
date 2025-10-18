@@ -6,9 +6,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
-	"path/filepath"
-	"strconv"
 	"strings"
 )
 
@@ -40,101 +37,52 @@ func main() {
 		switch parts[0] {
 
 		case "cd":
-			var err error
-			if len(parts) > 1 {
-				err = os.Chdir(parts[1])
-			} else {
-				var homedir string
-				homedir, err = os.UserHomeDir()
-				if err != nil {
-					fmt.Println("failed to get user home dir")
-					continue
-				}
-				err = os.Chdir(homedir)
-			}
+			err := cmdCd(parts)
 			if err != nil {
-				fmt.Println("failed to execute cd:", err)
+				fmt.Fprintln(os.Stderr, err)
 				continue
 			}
 
 		case "pwd":
-			workDir, err := os.Getwd()
+			out, err := cmdPwd()
 			if err != nil {
-				fmt.Println("failed to get current workdir:", err)
+				fmt.Fprintln(os.Stderr, err)
 				continue
 			}
-			fmt.Println(workDir)
+			fmt.Println(out)
 
 		case "echo":
-			if len(parts) > 1 {
-				fmt.Println(strings.Join(parts[1:], " "))
-			}
+			out := cmdEcho(parts)
+			fmt.Println(out)
 
 		case "ps":
-			fmt.Printf("%-8s %-20s\n", "PID", "PROGRAM")
-
-			entries, err := os.ReadDir("/proc")
+			out, err := cmdPs()
 			if err != nil {
-				fmt.Println("failed to read /proc:", err)
+				fmt.Fprintln(os.Stderr, err)
 				continue
 			}
 
-			for _, entry := range entries {
-				if !entry.IsDir() {
-					continue
-				}
-
-				pid, err := strconv.Atoi(entry.Name())
-				if err != nil {
-					continue
-				}
-
-				comm, err := os.ReadFile(filepath.Join("/proc", entry.Name(), "comm"))
-				if err != nil {
-					fmt.Printf("failed to read comm of pid %v: %s", pid, err)
-					continue
-				}
-				program := strings.TrimSpace(string(comm))
-
-				fmt.Printf("%-8d %-20s\n", pid, program)
+			for _, line := range out {
+				fmt.Println(line)
 			}
 
 		case "kill":
-			if len(parts) < 2 {
-				fmt.Println("usage: kill {pid}")
-				continue
-			}
-
-			pid, err := strconv.Atoi(parts[1])
+			err := cmdKill(parts)
 			if err != nil {
-				fmt.Println("invalid pid")
-				continue
-			}
-
-			process, err := os.FindProcess(pid)
-			if err != nil {
-				fmt.Println("failed to find process:", err)
-				continue
-			}
-
-			if err := process.Kill(); err != nil {
-				fmt.Println("failed to kill process")
-				continue
+				fmt.Fprintln(os.Stderr, err)
 			}
 
 		case "exit":
 			os.Exit(0)
 
 		default:
-			cmd := exec.Command(parts[0], parts[1:]...)
-
-			cmd.Stdin = os.Stdin
-			cmd.Stdout = os.Stdout
-
-			err := cmd.Run()
+			out, err := cmdExternal(parts)
 			if err != nil {
-				fmt.Println("failed to execute external command:", err)
+				fmt.Fprintln(os.Stderr, err)
 				continue
+			}
+			for _, line := range out {
+				fmt.Println(line)
 			}
 		}
 	}
