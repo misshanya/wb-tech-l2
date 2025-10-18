@@ -104,15 +104,15 @@ func main() {
 			pipeReader, pipeWriter := io.Pipe()
 
 			wg.Add(1)
-			go func() {
+			go func(cmd string, stdin io.Reader, stdout io.WriteCloser) {
 				defer wg.Done()
-				defer pipeWriter.Close()
+				defer stdout.Close()
 
-				err := processCommand(cmd, inputReader, pipeWriter)
+				err := processCommand(cmd, stdin, stdout)
 				if err != nil {
 					fmt.Fprintln(os.Stderr, err)
 				}
-			}()
+			}(cmd, inputReader, pipeWriter)
 
 			inputReader = pipeReader
 		}
