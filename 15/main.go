@@ -93,26 +93,33 @@ func main() {
 		var wg sync.WaitGroup
 		var inputReader io.Reader = os.Stdin
 		for i, cmd := range pipes {
-			if i == len(pipes)-1 {
-				err := processCommand(cmd, inputReader, os.Stdout)
-				if err != nil {
-					fmt.Fprintln(os.Stderr, err)
-				}
-				continue
+			var pipeReader *io.PipeReader
+			var pipeWriter *io.PipeWriter
+			if i < len(pipes)-1 {
+				pipeReader, pipeWriter = io.Pipe()
 			}
 
-			pipeReader, pipeWriter := io.Pipe()
-
 			wg.Add(1)
-			go func(cmd string, stdin io.Reader, stdout io.WriteCloser) {
+			go func(wg *sync.WaitGroup, cmd string, stdin io.Reader, stdout *io.PipeWriter) {
 				defer wg.Done()
-				defer stdout.Close()
+				var out io.Writer = os.Stdout
 
-				err := processCommand(cmd, stdin, stdout)
-				if err != nil {
-					fmt.Fprintln(os.Stderr, err)
+				if closer, ok := stdin.(io.Closer); ok && stdin != os.Stdin {
+					defer closer.Close()
 				}
-			}(cmd, inputReader, pipeWriter)
+
+				if stdout != nil {
+					defer stdout.Close()
+					out = stdout
+				}
+
+				err := processCommand(cmd, stdin, out)
+				if err != nil {
+					if !errors.Is(err, io.ErrClosedPipe) {
+						fmt.Fprintln(os.Stderr, err)
+					}
+				}
+			}(&wg, cmd, inputReader, pipeWriter)
 
 			inputReader = pipeReader
 		}
