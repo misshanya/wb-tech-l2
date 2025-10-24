@@ -1,12 +1,44 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
+
+	"golang.org/x/net/html"
 )
+
+func findLinks(body []byte) ([]string, error) {
+	r := bytes.NewReader(body)
+	node, err := html.Parse(r)
+	if err != nil {
+		return []string{}, fmt.Errorf("failed to parse html: %w", err)
+	}
+
+	var links []string
+
+	var f func(*html.Node)
+	f = func(node *html.Node) {
+		if node.Type == html.ElementNode && node.Data == "a" {
+			for _, a := range node.Attr {
+				if a.Key == "href" {
+					links = append(links, a.Val)
+					break
+				}
+			}
+		}
+		for c := node.FirstChild; c != nil; c = c.NextSibling {
+			f(c)
+		}
+	}
+
+	f(node)
+
+	return links, nil
+}
 
 func main() {
 	if len(os.Args) < 2 {
@@ -42,4 +74,12 @@ func main() {
 		fmt.Printf("failed to write file: %s\n", err)
 		os.Exit(1)
 	}
+
+	links, err := findLinks(body)
+	if err != nil {
+		fmt.Printf("failed to find links: %s\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Println("links:", links)
 }
