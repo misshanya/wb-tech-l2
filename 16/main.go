@@ -51,11 +51,18 @@ func parseAndDownloadRecursive(baseLink string, depth int) error {
 	baseDir := fmt.Sprintf("parsed/%s", base.Hostname())
 	mainFilePath := fmt.Sprintf("%s/index.html", baseDir)
 
+	visited := make(map[string]struct{})
+
 	var f func(link string, path string, currentDepth, maxDepth int) error
 	f = func(link string, path string, currentDepth, maxDepth int) error {
 		if currentDepth >= maxDepth {
 			return nil
 		}
+
+		if _, ok := visited[link]; ok {
+			return nil
+		}
+		visited[link] = struct{}{}
 
 		base, err := url.Parse(link)
 		if err != nil {
@@ -64,13 +71,6 @@ func parseAndDownloadRecursive(baseLink string, depth int) error {
 		body, err := download(link)
 		if err != nil {
 			return fmt.Errorf("failed to download file: %w", err)
-		}
-
-		_, err = os.Stat(path)
-		if err != nil {
-			if !os.IsNotExist(err) {
-				return err
-			}
 		}
 
 		err = save(body, path)
@@ -94,10 +94,10 @@ func parseAndDownloadRecursive(baseLink string, depth int) error {
 				continue
 			}
 
-			if strings.TrimPrefix(final.Path, "/") == "" {
-				continue
+			nextPath := filepath.Join(baseDir, final.Path)
+			if strings.HasSuffix(nextPath, string(filepath.Separator)) || filepath.Ext(nextPath) == "" {
+				nextPath = filepath.Join(nextPath, "index.html")
 			}
-			nextPath := fmt.Sprintf("%s/%s", baseDir, strings.TrimPrefix(final.Path, "/"))
 			if err := f(
 				final.String(),
 				nextPath,
