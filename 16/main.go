@@ -5,11 +5,114 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"golang.org/x/net/html"
 )
+
+func download(url string) ([]byte, error) {
+	resp, err := http.Get(url)
+	if err != nil {
+		return []byte{}, fmt.Errorf("failed to request: %w", err)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return []byte{}, fmt.Errorf("failed to read response body: %w", err)
+	}
+	defer resp.Body.Close()
+
+	return body, nil
+}
+
+func save(data []byte, path string) error {
+	err := os.MkdirAll(filepath.Dir(path), 0o755)
+	if err != nil {
+		return fmt.Errorf("failed to create dirs: %w", err)
+	}
+
+	err = os.WriteFile(path, data, 0o644)
+	if err != nil {
+		return fmt.Errorf("failed to write file: %w", err)
+	}
+
+	return nil
+}
+
+func parseAndDownloadRecursive(baseLink string, depth int) error {
+	base, err := url.Parse(baseLink)
+	if err != nil {
+		return fmt.Errorf("failed to parse input url: %w", err)
+	}
+
+	baseDir := fmt.Sprintf("parsed/%s", base.Hostname())
+	mainFilePath := fmt.Sprintf("%s/index.html", baseDir)
+
+	var f func(link string, path string, currentDepth, maxDepth int) error
+	f = func(link string, path string, currentDepth, maxDepth int) error {
+		if currentDepth >= maxDepth {
+			return nil
+		}
+
+		base, err := url.Parse(link)
+		if err != nil {
+			return fmt.Errorf("failed to parse input url: %w", err)
+		}
+		body, err := download(link)
+		if err != nil {
+			return fmt.Errorf("failed to download file: %w", err)
+		}
+
+		_, err = os.Stat(path)
+		if err != nil {
+			if !os.IsNotExist(err) {
+				return err
+			}
+		}
+
+		err = save(body, path)
+		if err != nil {
+			return fmt.Errorf("failed to save file: %w", err)
+		}
+
+		links, err := findLinks(body)
+		if err != nil {
+			return fmt.Errorf("failed to find links: %w", err)
+		}
+
+		for _, link := range links {
+			ref, err := url.Parse(link)
+			if err != nil {
+				fmt.Printf("failed to parse ref url: %s\n", err)
+				continue
+			}
+			final := base.ResolveReference(ref)
+			if final.Hostname() != base.Hostname() || final.Scheme != "http" && final.Scheme != "https" {
+				continue
+			}
+
+			if strings.TrimPrefix(final.Path, "/") == "" {
+				continue
+			}
+			nextPath := fmt.Sprintf("%s/%s", baseDir, strings.TrimPrefix(final.Path, "/"))
+			if err := f(
+				final.String(),
+				nextPath,
+				currentDepth+1, maxDepth,
+			); err != nil {
+				fmt.Printf("failed to parse and download: %s\n", err)
+				continue
+			}
+		}
+
+		return nil
+	}
+
+	return f(baseLink, mainFilePath, 0, depth)
+}
 
 func findLinks(body []byte) ([]string, error) {
 	r := bytes.NewReader(body)
@@ -55,40 +158,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	url := os.Args[1]
+	inputURL := os.Args[1]
 
-	resp, err := http.Get(url)
-	if err != nil {
-		fmt.Printf("failed to request: %s\n", err)
+	if err := parseAndDownloadRecursive(inputURL, 10); err != nil {
+		fmt.Printf("failed to parse and download: %s\n", err)
 		os.Exit(1)
 	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		fmt.Printf("failed to read response body: %s\n", err)
-		os.Exit(1)
-	}
-	resp.Body.Close()
-
-	path := "parsed/index.html"
-
-	err = os.MkdirAll(filepath.Dir(path), 0o755)
-	if err != nil {
-		fmt.Printf("failed to create dirs: %s", err)
-		os.Exit(1)
-	}
-
-	err = os.WriteFile(path, body, 0o644)
-	if err != nil {
-		fmt.Printf("failed to write file: %s\n", err)
-		os.Exit(1)
-	}
-
-	links, err := findLinks(body)
-	if err != nil {
-		fmt.Printf("failed to find links: %s\n", err)
-		os.Exit(1)
-	}
-
-	fmt.Println("links:", links)
 }
