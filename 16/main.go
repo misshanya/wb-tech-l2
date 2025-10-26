@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"net/url"
 	"os"
@@ -84,14 +85,20 @@ func parseAndDownloadRecursive(baseLink string, depth int) error {
 }
 
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Println("usage: miniget <url>")
+	recursionDepth := flag.Int("d", 1, "recursion depth")
+
+	flag.Parse()
+
+	args := flag.Args()
+
+	if len(args) < 1 {
+		fmt.Println("usage: miniget [-d {depth}] <url>")
 		os.Exit(1)
 	}
 
-	inputURL := os.Args[1]
+	inputURL := args[0]
 
-	if err := parseAndDownloadRecursive(inputURL, 10); err != nil {
+	if err := parseAndDownloadRecursive(inputURL, *recursionDepth); err != nil {
 		fmt.Printf("failed to parse and download: %s\n", err)
 		os.Exit(1)
 	}
