@@ -1,46 +1,15 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
-	"io"
-	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"golang.org/x/net/html"
+	"github.com/misshanya/wb-tech-l2/15/downloader"
+	"github.com/misshanya/wb-tech-l2/15/parser"
 )
-
-func download(url string) ([]byte, error) {
-	resp, err := http.Get(url)
-	if err != nil {
-		return []byte{}, fmt.Errorf("failed to request: %w", err)
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return []byte{}, fmt.Errorf("failed to read response body: %w", err)
-	}
-	defer resp.Body.Close()
-
-	return body, nil
-}
-
-func save(data []byte, path string) error {
-	err := os.MkdirAll(filepath.Dir(path), 0o755)
-	if err != nil {
-		return fmt.Errorf("failed to create dirs: %w", err)
-	}
-
-	err = os.WriteFile(path, data, 0o644)
-	if err != nil {
-		return fmt.Errorf("failed to write file: %w", err)
-	}
-
-	return nil
-}
 
 func parseAndDownloadRecursive(baseLink string, depth int) error {
 	base, err := url.Parse(baseLink)
@@ -68,17 +37,17 @@ func parseAndDownloadRecursive(baseLink string, depth int) error {
 		if err != nil {
 			return fmt.Errorf("failed to parse input url: %w", err)
 		}
-		body, err := download(link)
+		body, err := downloader.Download(link)
 		if err != nil {
 			return fmt.Errorf("failed to download file: %w", err)
 		}
 
-		err = save(body, path)
+		err = downloader.Save(body, path)
 		if err != nil {
 			return fmt.Errorf("failed to save file: %w", err)
 		}
 
-		links, err := findLinks(body)
+		links, err := parser.FindLinks(body)
 		if err != nil {
 			return fmt.Errorf("failed to find links: %w", err)
 		}
@@ -112,44 +81,6 @@ func parseAndDownloadRecursive(baseLink string, depth int) error {
 	}
 
 	return f(baseLink, mainFilePath, 0, depth)
-}
-
-func findLinks(body []byte) ([]string, error) {
-	r := bytes.NewReader(body)
-	node, err := html.Parse(r)
-	if err != nil {
-		return []string{}, fmt.Errorf("failed to parse html: %w", err)
-	}
-
-	var links []string
-
-	findAndAppendAttr := func(attrs []html.Attribute, key string) {
-		for _, a := range attrs {
-			if a.Key == key {
-				links = append(links, a.Val)
-				break
-			}
-		}
-	}
-
-	var f func(*html.Node)
-	f = func(node *html.Node) {
-		if node.Type == html.ElementNode {
-			switch node.Data {
-			case "a", "link":
-				findAndAppendAttr(node.Attr, "href")
-			case "script", "img":
-				findAndAppendAttr(node.Attr, "src")
-			}
-		}
-		for c := node.FirstChild; c != nil; c = c.NextSibling {
-			f(c)
-		}
-	}
-
-	f(node)
-
-	return links, nil
 }
 
 func main() {
