@@ -27,7 +27,7 @@ func (h *handler) GetForDay(c echo.Context) error {
 		})
 	}
 
-	resp := make(dto.EventsGetForDay, len(events))
+	resp := make(dto.EventsGetForDayResponse, len(events))
 	for i, event := range events {
 		resp[i] = dto.Event{
 			ID:     event.ID,

@@ -30,4 +30,4 @@ type EventDeleteRequest struct {
 	ID int `json:"id"`
 }
 
-type EventsGetForDay []Event
+type EventsGetForDayResponse []Event
