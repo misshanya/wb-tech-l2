@@ -6,7 +6,7 @@ import (
 	"github.com/misshanya/wb-tech-l2/18/internal/models"
 )
 
-// Get retrieves events for day
+// GetForDay retrieves events for day
 func (r *repo) GetForDay(date time.Time) []*models.Event {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
