@@ -11,6 +11,7 @@ type repo interface {
 	Create(e *models.Event) *models.Event
 	GetForDay(date time.Time) []*models.Event
 	GetForWeek(date time.Time) []*models.Event
+	GetForMonth(date time.Time) []*models.Event
 	Update(e *models.Event) error
 	Delete(id int)
 }
