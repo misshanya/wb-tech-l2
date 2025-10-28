@@ -31,3 +31,5 @@ type EventDeleteRequest struct {
 }
 
 type EventsGetForDayResponse []Event
+
+type EventsGetForWeekResponse []Event

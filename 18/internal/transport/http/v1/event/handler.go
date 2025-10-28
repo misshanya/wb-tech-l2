@@ -10,6 +10,7 @@ import (
 type service interface {
 	Create(e *models.Event) *models.Event
 	GetForDay(date time.Time) []*models.Event
+	GetForWeek(date time.Time) []*models.Event
 	Update(e *models.Event) error
 	Delete(id int)
 }
@@ -29,4 +30,5 @@ func (h *handler) Setup(router *echo.Group) {
 	router.POST("/update_event", h.Update)
 	router.POST("/delete_event/:id", h.Delete)
 	router.GET("/events_for_day/:date", h.GetForDay)
+	router.GET("/events_for_week/:date", h.GetForWeek)
 }
