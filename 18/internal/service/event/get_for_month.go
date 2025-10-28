@@ -8,5 +8,15 @@ import (
 
 // GetForMonth retrieves events for month
 func (s *service) GetForMonth(date time.Time) []*models.Event {
-	return s.repo.GetForMonth(date)
+	events := s.repo.GetAll()
+
+	var result []*models.Event
+	for _, event := range events {
+		if date.Year() == event.Date.Year() &&
+			date.Month() == event.Date.Month() {
+			result = append(result, event)
+		}
+	}
+
+	return result
 }
